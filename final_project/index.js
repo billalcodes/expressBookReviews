@@ -8,9 +8,10 @@ const app = express();
 
 app.use(express.json());
 
-app.use("/customer",session({secret:"fingerprint_customer",resave: true, saveUninitialized: true}))
+app.use("/customer", session({secret:"fingerprint_customer", resave: true, saveUninitialized: true}))
 
-app.use("/customer/auth/*", function auth(req,res,next){
+// Middleware to check if the user is authenticated
+const authenticateUser = (req, res, next) => {
     if (req.session.authorization) {
         let token = req.session.authorization['accessToken'];
 
@@ -18,7 +19,7 @@ app.use("/customer/auth/*", function auth(req,res,next){
         jwt.verify(token, "access", (err, user) => {
             if (!err) {
                 req.user = user;
-                next(); // Proceed to the next middleware
+                next();
             } else {
                 return res.status(403).json({ message: "User not authenticated" });
             }
@@ -26,11 +27,17 @@ app.use("/customer/auth/*", function auth(req,res,next){
     } else {
         return res.status(403).json({ message: "User not logged in" });
     }
-});
- 
-const PORT =3000;
+};
 
+// Apply authentication middleware only to protected routes
+app.use("/customer/auth/*", authenticateUser);
+
+const PORT = 3000;
+
+// Mount customer routes
 app.use("/customer", customer_routes);
+
+// Mount general routes
 app.use("/", genl_routes);
 
-app.listen(PORT,()=>console.log("Server is running"));
+app.listen(PORT, () => console.log("Server is running on port " + PORT));
